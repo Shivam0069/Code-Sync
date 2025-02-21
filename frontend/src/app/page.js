@@ -24,6 +24,7 @@ const Home = () => {
       toast.error("Room Id & Username is required");
       return;
     }
+    localStorage.setItem("username", username);
 
     // Redirect to the editor page
     router.push(`/editor/${roomId}`);

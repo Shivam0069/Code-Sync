@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "codemirror": "^5.65.18",
     "next": "15.1.7",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
