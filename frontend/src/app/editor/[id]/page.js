@@ -15,6 +15,7 @@ const EditorPage = ({ params }) => {
   const unwrappedParams = use(params);
   const roomId = unwrappedParams.id;
   const [clients, setClients] = useState([]);
+  const [initialCode, setInitialCode] = useState("");
 
   // Voice chat state
   const [isInVoiceChat, setIsInVoiceChat] = useState(false);
@@ -26,6 +27,25 @@ const EditorPage = ({ params }) => {
     localStorage.getItem("username") ||
       `User-${Math.floor(Math.random() * 1000)}`
   );
+
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const fileContent = e.target.result;
+      console.log("fileCOntent: ", fileContent);
+      setInitialCode(fileContent);
+
+      codeRef.current = fileContent; // Update the codeRef with the file content
+      socketRef.current.emit(ACTIONS.CODE_CHANGE, {
+        roomId,
+        code: fileContent,
+      });
+    };
+    reader.readAsText(file); // Read the file as text
+  };
 
   // WebRTC configuration
   const configuration = {
@@ -245,8 +265,66 @@ const EditorPage = ({ params }) => {
     router.push("/");
   }
 
+  function downloadHandler() {
+    if (!codeRef.current) {
+      toast.error("No code to download");
+      return;
+    }
+
+    // Prompt user for file name and type
+    const fileName = prompt("Enter file name (without extension):", "code");
+    if (!fileName) return; // If user cancels, stop execution
+
+    const fileType = prompt(
+      "Enter file extension (e.g., txt, js, py, cpp):",
+      "txt"
+    );
+    if (!fileType) return; // If user cancels, stop execution
+
+    const validExtensions = ["txt", "js", "py", "cpp"];
+    if (!validExtensions.includes(fileType)) {
+      toast.error("Invalid file type. Please enter a valid extension.");
+      return;
+    }
+
+    const blob = new Blob([codeRef.current], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${fileName}.${fileType}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
   return (
-    <div className="mainWrap">
+    <div className="mainWrap relative w-full h-screen">
+      <div className="absolute bottom-10 right-4 z-50 flex space-x-2">
+        {/* Upload Button */}
+        <label
+          htmlFor="fileInput"
+          className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded-md shadow-md hover:bg-blue-700 transition"
+        >
+          Upload File
+        </label>
+        <input
+          id="fileInput"
+          type="file"
+          accept=".txt,.cpp,.py,.js"
+          onChange={handleFileUpload}
+          className="hidden"
+        />
+
+        {/* Download Button */}
+        <button
+          onClick={downloadHandler}
+          className="bg-green-600 text-white px-4 py-2 rounded-md shadow-md hover:bg-green-700 transition"
+        >
+          Download
+        </button>
+      </div>
+
       <div className="aside">
         <div className="asideInner">
           <h3>Connected Users</h3>
@@ -286,6 +364,7 @@ const EditorPage = ({ params }) => {
           onCodeChange={(code) => {
             codeRef.current = code;
           }}
+          initialCode={initialCode}
         />
       </div>
     </div>
