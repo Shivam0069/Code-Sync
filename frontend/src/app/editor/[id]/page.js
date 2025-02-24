@@ -15,13 +15,13 @@ const EditorPage = ({ params }) => {
   const unwrappedParams = use(params);
   const roomId = unwrappedParams.id;
   const [clients, setClients] = useState([]);
-  console.log("id", socketRef?.current?.id);
-  console.log("clients", clients);
 
   // Voice chat state
   const [isInVoiceChat, setIsInVoiceChat] = useState(false);
+  const [isListening, setIsListening] = useState(true); // New state for listening mode
   const localStreamRef = useRef(null);
   const peerConnectionsRef = useRef({});
+  const audioElementsRef = useRef({}); // Track audio elements for each peer
   const username = useRef(
     localStorage.getItem("username") ||
       `User-${Math.floor(Math.random() * 1000)}`
@@ -33,6 +33,44 @@ const EditorPage = ({ params }) => {
       { urls: "stun:stun.l.google.com:19302" },
       { urls: "stun:stun1.l.google.com:19302" },
     ],
+  };
+
+  const getOrCreatePeerConnection = (peerId) => {
+    if (!peerConnectionsRef.current[peerId]) {
+      const peerConnection = new RTCPeerConnection(configuration);
+      peerConnectionsRef.current[peerId] = peerConnection;
+
+      // Add local stream if it exists and we're in voice chat
+      if (localStreamRef.current && isInVoiceChat) {
+        localStreamRef.current.getTracks().forEach((track) => {
+          peerConnection.addTrack(track, localStreamRef.current);
+        });
+      }
+
+      // Handle incoming tracks
+      peerConnection.ontrack = (event) => {
+        if (!audioElementsRef.current[peerId]) {
+          const audio = new Audio();
+          audio.autoplay = true;
+          audioElementsRef.current[peerId] = audio;
+        }
+        audioElementsRef.current[peerId].srcObject = event.streams[0];
+        if (isListening) {
+          audioElementsRef.current[peerId].play().catch(console.error);
+        }
+      };
+
+      // Handle ICE candidates
+      peerConnection.onicecandidate = (event) => {
+        if (event.candidate) {
+          socketRef.current.emit(ACTIONS.ICE_CANDIDATE, {
+            candidate: event.candidate,
+            to: peerId,
+          });
+        }
+      };
+    }
+    return peerConnectionsRef.current[peerId];
   };
 
   useEffect(() => {
@@ -69,36 +107,12 @@ const EditorPage = ({ params }) => {
 
       // Voice chat handlers
       socketRef.current.on(ACTIONS.VOICE_OFFER, async ({ offer, from }) => {
-        if (!peerConnectionsRef.current[from]) {
-          const peerConnection = new RTCPeerConnection(configuration);
-          peerConnectionsRef.current[from] = peerConnection;
-
-          if (localStreamRef.current) {
-            localStreamRef.current.getTracks().forEach((track) => {
-              peerConnection.addTrack(track, localStreamRef.current);
-            });
-          }
-
-          peerConnection.onicecandidate = (event) => {
-            if (event.candidate) {
-              socketRef.current.emit(ACTIONS.ICE_CANDIDATE, {
-                candidate: event.candidate,
-                to: from,
-              });
-            }
-          };
-
-          peerConnection.ontrack = (event) => {
-            const audio = new Audio();
-            audio.srcObject = event.streams[0];
-            audio.play();
-          };
-        }
-
-        const pc = peerConnectionsRef.current[from];
-        await pc.setRemoteDescription(new RTCSessionDescription(offer));
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
+        const peerConnection = getOrCreatePeerConnection(from);
+        await peerConnection.setRemoteDescription(
+          new RTCSessionDescription(offer)
+        );
+        const answer = await peerConnection.createAnswer();
+        await peerConnection.setLocalDescription(answer);
 
         socketRef.current.emit(ACTIONS.VOICE_ANSWER, {
           answer,
@@ -133,6 +147,11 @@ const EditorPage = ({ params }) => {
     }
 
     return () => {
+      // Cleanup
+      Object.values(audioElementsRef.current).forEach((audio) => {
+        audio.srcObject = null;
+        audio.remove();
+      });
       Object.values(peerConnectionsRef.current).forEach((pc) => pc.close());
       if (localStreamRef.current) {
         localStreamRef.current.getTracks().forEach((track) => track.stop());
@@ -140,6 +159,17 @@ const EditorPage = ({ params }) => {
       socketRef.current?.disconnect();
     };
   }, [roomId]);
+
+  const toggleListening = () => {
+    setIsListening(!isListening);
+    Object.values(audioElementsRef.current).forEach((audio) => {
+      if (!isListening) {
+        audio.play().catch(console.error);
+      } else {
+        audio.pause();
+      }
+    });
+  };
 
   const toggleVoiceChat = async () => {
     try {
@@ -150,34 +180,20 @@ const EditorPage = ({ params }) => {
         });
         localStreamRef.current = stream;
 
+        // Add tracks to existing peer connections
+        Object.entries(peerConnectionsRef.current).forEach(([peerId, pc]) => {
+          stream.getTracks().forEach((track) => {
+            pc.addTrack(track, stream);
+          });
+        });
+
         // Notify other users
         socketRef.current.emit(ACTIONS.START_VOICE_CHAT, { roomId });
 
-        // Create peer connections with existing voice chat users
+        // Create new connections with voice chat users
         clients.forEach((client) => {
-          if (client.isInVoiceChat && client.id !== socketRef.current.id) {
-            const pc = new RTCPeerConnection(configuration);
-            peerConnectionsRef.current[client.id] = pc;
-
-            stream.getTracks().forEach((track) => {
-              pc.addTrack(track, stream);
-            });
-
-            pc.onicecandidate = (event) => {
-              if (event.candidate) {
-                socketRef.current.emit(ACTIONS.ICE_CANDIDATE, {
-                  candidate: event.candidate,
-                  to: client.id,
-                });
-              }
-            };
-
-            pc.ontrack = (event) => {
-              const audio = new Audio();
-              audio.srcObject = event.streams[0];
-              audio.play();
-            };
-
+          if (client.isInVoiceChat && client.id !== socketRef.current?.id) {
+            const pc = getOrCreatePeerConnection(client.id);
             pc.createOffer().then((offer) => {
               pc.setLocalDescription(offer).then(() => {
                 socketRef.current.emit(ACTIONS.VOICE_OFFER, {
@@ -189,12 +205,19 @@ const EditorPage = ({ params }) => {
           }
         });
       } else {
-        // Stop voice chat
+        // Stop voice chat but maintain listening connections
         if (localStreamRef.current) {
           localStreamRef.current.getTracks().forEach((track) => track.stop());
+          localStreamRef.current = null;
         }
-        Object.values(peerConnectionsRef.current).forEach((pc) => pc.close());
-        peerConnectionsRef.current = {};
+
+        // Remove local tracks from peer connections but keep connections alive
+        Object.values(peerConnectionsRef.current).forEach((pc) => {
+          pc.getSenders().forEach((sender) => {
+            pc.removeTrack(sender);
+          });
+        });
+
         socketRef.current.emit(ACTIONS.END_VOICE_CHAT, { roomId });
       }
 
@@ -236,6 +259,12 @@ const EditorPage = ({ params }) => {
                 onVoiceToggle={
                   client.id === socketRef.current?.id
                     ? toggleVoiceChat
+                    : undefined
+                }
+                isListening={isListening}
+                onListeningToggle={
+                  client.id === socketRef.current?.id
+                    ? toggleListening
                     : undefined
                 }
                 isSelf={client.id === socketRef.current?.id}
