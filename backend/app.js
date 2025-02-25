@@ -13,6 +13,8 @@ const app = express();
 // Import the cookie-parser package to parse cookies attached to the client request object
 const cookieParser = require("cookie-parser");
 
+const userRoutes = require("./routes/user.routes");
+const fileRoutes = require("./routes/file.routes");
 app.use(express.json());
 
 // Middleware to parse incoming requests with URL-encoded payloads
@@ -33,5 +35,8 @@ app.use(
 app.get("/", (req, res) => {
   res.send("Hello World");
 });
+
+app.use("/users", userRoutes);
+app.use("/files", fileRoutes);
 
 module.exports = app;
