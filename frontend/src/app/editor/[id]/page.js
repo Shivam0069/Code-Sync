@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import Editor from "@/components/Editor";
 import Client from "@/components/Client";
+import axios from "axios";
 
 const EditorPage = ({ params }) => {
   const socketRef = useRef(null);
@@ -277,11 +278,11 @@ const EditorPage = ({ params }) => {
 
     const fileType = prompt(
       "Enter file extension (e.g., txt, js, py, cpp):",
-      "txt"
+      ".txt"
     );
     if (!fileType) return; // If user cancels, stop execution
 
-    const validExtensions = ["txt", "js", "py", "cpp"];
+    const validExtensions = [".txt", ".js", ".py", ".cpp"];
     if (!validExtensions.includes(fileType)) {
       toast.error("Invalid file type. Please enter a valid extension.");
       return;
@@ -297,6 +298,46 @@ const EditorPage = ({ params }) => {
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   }
+
+  const saveCodeHandler = async () => {
+    const content = codeRef.current;
+    if (!codeRef.current) {
+      toast.error("No code to save");
+      return;
+    }
+
+    // Prompt user for file name and type
+    const fileName = prompt("Enter file name (without extension):", "code");
+    if (!fileName) return; // If user cancels, stop execution
+
+    const fileType = prompt(
+      "Enter file extension (e.g., .txt, .js, .py, .cpp):",
+      "txt"
+    );
+    if (!fileType) return; // If user cancels, stop execution
+
+    const validExtensions = [".txt", ".js", ".py", ".cpp"];
+    if (!validExtensions.includes(fileType)) {
+      toast.error("Invalid file type. Please enter a valid extension.");
+      return;
+    }
+
+    try {
+      const res = await axios.post(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/files/create`,
+        {
+          name: fileName,
+          content: content,
+          extension: fileType,
+        },
+        { withCredentials: true }
+      );
+      toast.success("File saved successfully");
+    } catch (error) {
+      toast.error("Error saving file");
+      console.error("Error saving file:", error);
+    }
+  };
 
   return (
     <div className="mainWrap relative w-full h-screen">
@@ -322,6 +363,14 @@ const EditorPage = ({ params }) => {
           className="bg-green-600 text-white px-4 py-2 rounded-md shadow-md hover:bg-green-700 transition"
         >
           Download
+        </button>
+
+        {/* Save Button */}
+        <button
+          onClick={saveCodeHandler}
+          className="bg-yellow-600 text-white px-4 py-2 rounded-md shadow-md hover:bg-yellow-700 transition"
+        >
+          Save
         </button>
       </div>
 
