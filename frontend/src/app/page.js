@@ -17,7 +17,7 @@ const Home = () => {
         router.push("/login");
       }
     }
-  }, [userData, router, isLoading]); // Dependency array ensures it runs only when `userData` changes
+  }, [isAuth, router, isLoading]); // Dependency array ensures it runs only when `userData` changes
   if (isLoading) {
     return <Loader />;
   }
