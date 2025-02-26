@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+
 const userSchema = new mongoose.Schema({
   userName: {
     type: String,
@@ -22,8 +23,18 @@ const userSchema = new mongoose.Schema({
   },
   files: [
     {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "File",
+      fileId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "File", // Reference to the File model
+      },
+      name: {
+        type: String,
+        required: true,
+      },
+      extension: {
+        type: String,
+        default: ".txt",
+      },
     },
   ],
 });
@@ -43,6 +54,6 @@ userSchema.statics.hashPassword = async function (password) {
   return await bcrypt.hash(password, 10);
 };
 
-const userModel = mongoose.model("user", userSchema);
+const User = mongoose.model("User", userSchema);
 
-module.exports = userModel;
+module.exports = User;

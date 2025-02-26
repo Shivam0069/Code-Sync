@@ -33,4 +33,14 @@ router.put(
   fileController.update
 );
 
+router.get(
+  "/getFile/:fileId",
+  authMiddleware.authUser,
+  fileController.getFileById
+);
+router.delete(
+  "/delete/:fileId",
+  authMiddleware.authUser,
+  fileController.delete
+);
 module.exports = router;

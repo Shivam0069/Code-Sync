@@ -1,4 +1,4 @@
-const userModel = require("../models/user.model");
+const User = require("../models/user.model");
 const { validationResult } = require("express-validator");
 
 module.exports.registerUser = async (req, res, next) => {
@@ -12,16 +12,16 @@ module.exports.registerUser = async (req, res, next) => {
     const { userName, email, password } = req.body;
 
     // Check if a user with the given email already exists
-    const existingUser = await userModel.findOne({ email });
+    const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: "Email already exists" });
     }
 
     // Hash the password
-    const hashedPassword = await userModel.hashPassword(password);
+    const hashedPassword = await User.hashPassword(password);
 
     // Create a new user
-    const user = await userModel.create({
+    const user = await User.create({
       userName,
       email,
       password: hashedPassword,
@@ -66,8 +66,7 @@ module.exports.loginUser = async (req, res, next) => {
 
     const { email, password } = req.body;
 
-    const user = await userModel
-      .findOne({ email })
+    const user = await User.findOne({ email })
       .select("+password")
       .populate("files");
     if (!user) {
@@ -94,8 +93,8 @@ module.exports.loginUser = async (req, res, next) => {
     // Set the token in a cookie
     res.cookie("token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "None",
+      secure: process.env.NODE_ENV === "production", // Secure only in production
+      sameSite: process.env.NODE_ENV === "production" ? "None" : "Lax",
       maxAge: 3600000, // 1 hour
     });
 

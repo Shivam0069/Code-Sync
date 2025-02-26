@@ -13,6 +13,11 @@ const fileSchema = new mongoose.Schema({
     type: String,
     default: ".txt",
   },
+  ownerId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User", // Reference to the User model
+    required: true,
+  },
   createdAt: {
     type: Date,
     default: Date.now,

@@ -1,4 +1,4 @@
-const userModel = require("../models/user.model"); // Import the user model
+const User = require("../models/user.model"); // Import the user model
 const jwt = require("jsonwebtoken"); // Import jsonwebtoken for token handling
 module.exports.authUser = async (req, res, next) => {
   // Export the authUser middleware function
@@ -26,7 +26,7 @@ module.exports.authUser = async (req, res, next) => {
       // Verify the token using the secret key
       const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
       // Find the user by the ID from the decoded token
-      const user = await userModel.findById(decoded._id);
+      const user = await User.findById(decoded._id).populate("files");
       if (!user) {
         // If the user is not found, return a 401 Unauthorized response
         return res
