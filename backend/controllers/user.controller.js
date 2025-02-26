@@ -99,7 +99,7 @@ module.exports.loginUser = async (req, res, next) => {
     });
 
     // Return the response
-    res.status(201).json({
+    res.status(200).json({
       user: sanitizedUser,
 
       message: "User logged in successfully!",
