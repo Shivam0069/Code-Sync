@@ -1,8 +1,9 @@
 // components/Register.js
 "use client";
+import Loader from "@/components/Loader";
 import { useUser } from "@/context/userContext";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const Register = () => {
   const [userData, setUserData] = useState({
@@ -11,8 +12,18 @@ const Register = () => {
     password: "",
   });
   const [showPassword, setShowPassword] = useState(false);
-  const { userRegister } = useUser();
+  const { userRegister, isAuth, isLoading } = useUser();
   const router = useRouter();
+
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    if (!isLoading && isAuth) {
+      router.push("/profile");
+    }
+    if (!isLoading && !isAuth) {
+      setLoading(false);
+    }
+  }, [isAuth, isLoading]);
   const handleChange = (e) => {
     const { name, value } = e.target;
     setUserData({
@@ -36,7 +47,9 @@ const Register = () => {
     }
     // You can add your registration logic here
   };
-
+  if (isLoading || loading) {
+    return <Loader />;
+  }
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#1c1e29] text-[#fff]">
       <form

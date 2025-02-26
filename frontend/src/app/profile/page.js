@@ -1,16 +1,27 @@
 "use client";
+import Loader from "@/components/Loader";
 import Profile from "@/components/Profile";
+import { useUser } from "@/context/userContext";
 import { useRouter } from "next/navigation";
-
-const sampleFiles = [
-  { name: "document.txt", type: "txt" },
-  { name: "script.js", type: "js" },
-  { name: "analysis.py", type: "py" },
-  { name: "image.jpg", type: "jpg" },
-];
+import { useEffect, useState } from "react";
 
 export default function ProfilePage() {
   const router = useRouter();
+  const { userData, isAuth, isLoading } = useUser();
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    if (!isAuth && !isLoading) {
+      router.push("/login");
+    }
+    if (isAuth && !isLoading) {
+      setLoading(false);
+    }
+  }, [isAuth, isLoading]);
+
+  if (isLoading || loading) {
+    return <Loader />;
+  }
+
   return (
     <div className="min-h-screen  py-12 relative">
       <div className=" p-4 absolute top-0 right-0 ">
@@ -21,12 +32,7 @@ export default function ProfilePage() {
           Create Room
         </button>
       </div>
-      <Profile
-        username="John Doe"
-        email="john.doe@example.com"
-        avatarSrc="/placeholder.svg?height=128&width=128"
-        files={sampleFiles}
-      />
+      <Profile userData={userData} />
     </div>
   );
 }

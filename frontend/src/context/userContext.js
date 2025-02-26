@@ -6,8 +6,9 @@ import toast from "react-hot-toast";
 export const UserDataContext = createContext();
 
 const UserContext = ({ children }) => {
-  const [userData, setUserData] = useState({});
+  const [userData, setUserData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAuth, setIsAuth] = useState(false);
 
   useEffect(() => {
     const getUserData = async () => {
@@ -18,6 +19,7 @@ const UserContext = ({ children }) => {
         );
         if (response.status === 200) {
           setUserData(response.data);
+          setIsAuth(true);
         } else {
           toast.error("Failed to fetch user data");
         }
@@ -44,7 +46,9 @@ const UserContext = ({ children }) => {
       if (response.status === 200 && response.data) {
         // Login successful
         const userData = response.data; // Assuming the response contains user data
-        setUserData(userData); // Update the userData state
+        setUserData(userData?.user); // Update the userData state
+        setIsAuth(true);
+
         return true; // Return true for successful login
       } else {
         // Login failed
@@ -70,7 +74,9 @@ const UserContext = ({ children }) => {
       if (response.status === 200 && response.data) {
         // Login successful
         const userData = response.data; // Assuming the response contains user data
-        setUserData(userData); // Update the userData state
+        setUserData(userData.user); // Update the userData state
+        setIsAuth(true);
+
         return true; // Return true for successful login
       } else {
         // Login failed
@@ -106,7 +112,14 @@ const UserContext = ({ children }) => {
     }
   };
 
-  const value = { userData, isLoading, userLogin, userRegister, deleteFile };
+  const value = {
+    userData,
+    isLoading,
+    userLogin,
+    userRegister,
+    deleteFile,
+    isAuth,
+  };
 
   return (
     <UserDataContext.Provider value={value}>
