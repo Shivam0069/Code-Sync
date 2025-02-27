@@ -5,6 +5,7 @@ import { v4 as uuidV4 } from "uuid";
 import toast from "react-hot-toast";
 import Image from "next/image";
 import { useUser } from "@/context/userContext";
+import logo from "../../../assets/code-sync.png";
 
 const Home = () => {
   const router = useRouter();
@@ -42,7 +43,7 @@ const Home = () => {
       <div className="formWrapper">
         <Image
           className="homePageLogo"
-          src="/code-sync.png"
+          src={logo.src}
           alt="Code Sync Logo"
           width={200}
           height={50}
