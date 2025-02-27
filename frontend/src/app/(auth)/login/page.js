@@ -1,9 +1,10 @@
 // components/Register.js
 "use client";
-import Loader from "@/components/Loader";
+import logo from "@/assets/code-sync.png";
 import { useUser } from "@/context/userContext";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import toast from "react-hot-toast";
 
 const Login = () => {
@@ -14,14 +15,7 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const { userLogin, isAuth, isLoading } = useUser();
   const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    if (!isLoading && isAuth) {
-      router.push("/profile");
-    }
-    if (!isLoading && !isAuth) {
-      setLoading(false);
-    }
-  }, [isAuth, isLoading]);
+
   const router = useRouter();
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -46,16 +40,24 @@ const Login = () => {
     }
     // You can add your registration logic here
   };
-  if (isLoading || loading) {
-    return <Loader />;
-  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#1c1e29] text-[#fff]">
       <form
         onSubmit={handleSubmit}
-        className="bg-[#282a36] p-8 rounded-lg shadow-md w-full max-w-md"
+        className="bg-white text-black p-8 rounded-lg shadow-md w-full max-w-md"
       >
-        <h2 className="text-2xl font-bold mb-6 text-center">Login</h2>
+        <div className="">
+          <Image
+            src={logo.src}
+            alt="Code Sync Logo"
+            width={200}
+            height={40}
+            priority
+            style={{ filter: "invert(100%)" }}
+          />
+        </div>
+        <h2 className="text-2xl font-bold mb-6 mt-4 ">Login to your Account</h2>
 
         <div className="mb-4">
           <label className="block  text-sm font-bold mb-2" htmlFor="email">
@@ -102,6 +104,17 @@ const Login = () => {
         >
           Login
         </button>
+        <p className="pt-2 text-sm">
+          Don&apos;t have a account ?{" "}
+          <span
+            onClick={() => {
+              router.push("/register");
+            }}
+            className="text-blue-500 cursor-pointer"
+          >
+            Register
+          </span>
+        </p>
       </form>
     </div>
   );

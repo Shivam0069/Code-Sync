@@ -4,7 +4,8 @@ import Loader from "@/components/Loader";
 import { useUser } from "@/context/userContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-
+import logo from "@/assets/code-sync.png";
+import Image from "next/image";
 const Register = () => {
   const [userData, setUserData] = useState({
     userName: "",
@@ -54,9 +55,19 @@ const Register = () => {
     <div className="min-h-screen flex items-center justify-center bg-[#1c1e29] text-[#fff]">
       <form
         onSubmit={handleSubmit}
-        className="bg-[#282a36] p-8 rounded-lg shadow-md w-full max-w-md"
+        className="bg-white text-black p-8 rounded-lg shadow-md w-full max-w-sm"
       >
-        <h2 className="text-2xl font-bold mb-6 text-center">Register</h2>
+        <div className="">
+          <Image
+            src={logo.src}
+            alt="Code Sync Logo"
+            width={200}
+            height={40}
+            priority
+            style={{ filter: "invert(100%)" }}
+          />
+        </div>
+        <h2 className="text-2xl font-bold mb-6  mt-4">Register With Us</h2>
         <div className="mb-4">
           <label className="block  text-sm font-bold mb-2" htmlFor="userName">
             Username
@@ -117,6 +128,17 @@ const Register = () => {
         >
           Register
         </button>
+        <p className="pt-2 text-sm">
+          Already have a account ?{" "}
+          <span
+            onClick={() => {
+              router.push("/login");
+            }}
+            className="text-blue-500 cursor-pointer"
+          >
+            Login
+          </span>
+        </p>
       </form>
     </div>
   );
