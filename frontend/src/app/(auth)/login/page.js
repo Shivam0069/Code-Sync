@@ -1,5 +1,6 @@
 // components/Register.js
 "use client";
+import Loader from "@/components/Loader";
 import logo from "../../../assets/code-sync.png";
 import { useUser } from "@/context/userContext";
 import Image from "next/image";
@@ -13,8 +14,8 @@ const Login = () => {
     password: "",
   });
   const [showPassword, setShowPassword] = useState(false);
-  const { userLogin, isAuth, isLoading } = useUser();
-  const [loading, setLoading] = useState(true);
+  const { userLogin } = useUser();
+  const [loading, setLoading] = useState(false);
 
   const router = useRouter();
   const handleChange = (e) => {
@@ -31,18 +32,20 @@ const Login = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("User Data:", userData);
+    setLoading(true);
     const res = await userLogin({ credentials: userData });
     if (res) {
       router.push("/profile");
     } else {
       toast.error("Error while loging in");
+      setLoading(false);
     }
     // You can add your registration logic here
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#1c1e29] text-[#fff]">
+      {loading && <Loader />}
       <form
         onSubmit={handleSubmit}
         className="bg-white text-black p-8 rounded-lg shadow-md w-full max-w-md"

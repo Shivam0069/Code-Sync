@@ -3,7 +3,7 @@
 import Loader from "@/components/Loader";
 import { useUser } from "@/context/userContext";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import logo from "../../../assets/code-sync.png";
 
 import Image from "next/image";
@@ -14,18 +14,11 @@ const Register = () => {
     password: "",
   });
   const [showPassword, setShowPassword] = useState(false);
-  const { userRegister, isAuth, isLoading } = useUser();
+  const { userRegister } = useUser();
   const router = useRouter();
 
-  const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    if (!isLoading && isAuth) {
-      router.push("/profile");
-    }
-    if (!isLoading && !isAuth) {
-      setLoading(false);
-    }
-  }, [isAuth, isLoading]);
+  const [loading, setLoading] = useState(false);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setUserData({
@@ -40,20 +33,21 @@ const Register = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    setLoading(true);
     console.log("User Data:", userData);
     const res = userRegister({ credentials: userData });
     if (res) {
       router.push("/profile");
     } else {
       toast.error("Error while registering");
+      setLoading(false);
     }
     // You can add your registration logic here
   };
-  if (isLoading || loading) {
-    return <Loader />;
-  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#1c1e29] text-[#fff]">
+      {loading && <Loader />}
       <form
         onSubmit={handleSubmit}
         className="bg-white text-black p-8 rounded-lg shadow-md w-full max-w-sm"

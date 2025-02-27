@@ -17,7 +17,7 @@ const ProfileLayout = ({ children }) => {
     }
   }, [isAuth, isLoading]);
 
-  if (isLoading || loading) {
+  if (loading) {
     return <Loader />;
   }
 
