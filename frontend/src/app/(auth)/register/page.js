@@ -4,7 +4,8 @@ import Loader from "@/components/Loader";
 import { useUser } from "@/context/userContext";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import logo from "@/assets/code-sync.png";
+import logo from "../../../assets/code-sync.png";
+
 import Image from "next/image";
 const Register = () => {
   const [userData, setUserData] = useState({

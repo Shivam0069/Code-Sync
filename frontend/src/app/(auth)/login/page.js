@@ -1,6 +1,6 @@
 // components/Register.js
 "use client";
-import logo from "@/assets/code-sync.png";
+import logo from "../../../assets/code-sync.png";
 import { useUser } from "@/context/userContext";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
