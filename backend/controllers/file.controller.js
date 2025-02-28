@@ -29,12 +29,16 @@ module.exports.create = async (req, res, next) => {
       fileId: file._id,
       name: file.name,
       extension: file.extension,
+      createdAt: file.createdAt,
+      updatedAt: file.updatedAt,
     };
 
     user.files.push(fileData);
     await user.save();
 
-    res.status(201).json({ message: "File created successfully", file });
+    res
+      .status(201)
+      .json({ message: "File created successfully", file: fileData });
   } catch (error) {
     next(error); // Pass the error to the error-handling middleware
   }
@@ -54,6 +58,7 @@ module.exports.update = async (req, res, next) => {
     if (!file) {
       return res.status(404).json({ message: "File not found" });
     }
+
     const userId = new mongoose.Types.ObjectId(req.user._id);
     if (!file.ownerId.equals(userId)) {
       return res
