@@ -8,6 +8,7 @@ import toast from "react-hot-toast";
 import Editor from "@/components/Editor";
 import Client from "@/components/Client";
 import axios from "axios";
+import { useUser } from "@/context/userContext";
 
 const EditorPage = ({ params }) => {
   const socketRef = useRef(null);
@@ -17,6 +18,7 @@ const EditorPage = ({ params }) => {
   const roomId = unwrappedParams.id;
   const [clients, setClients] = useState([]);
   const [initialCode, setInitialCode] = useState("");
+  const { createFile } = useUser();
 
   // Voice chat state
   const [isInVoiceChat, setIsInVoiceChat] = useState(false);
@@ -36,7 +38,6 @@ const EditorPage = ({ params }) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       const fileContent = e.target.result;
-      console.log("fileCOntent: ", fileContent);
       setInitialCode(fileContent);
 
       codeRef.current = fileContent; // Update the codeRef with the file content
@@ -263,7 +264,7 @@ const EditorPage = ({ params }) => {
       socketRef.current.emit(ACTIONS.LEAVE);
       socketRef.current.disconnect();
     }
-    router.push("/");
+    router.push("/profile");
   }
 
   function downloadHandler() {
@@ -321,18 +322,12 @@ const EditorPage = ({ params }) => {
       toast.error("Invalid file type. Please enter a valid extension.");
       return;
     }
+    const fileData = { name: fileName, content: content, extension: fileType };
+    console.log("fileData", fileData);
 
     try {
-      const res = await axios.post(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL}/files/create`,
-        {
-          name: fileName,
-          content: content,
-          extension: fileType,
-        },
-        { withCredentials: true }
-      );
-      toast.success("File saved successfully");
+      const res = await createFile(fileData);
+      if (res) toast.success("File saved successfully");
     } catch (error) {
       toast.error("Error saving file");
       console.error("Error saving file:", error);

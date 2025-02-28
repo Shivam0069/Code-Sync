@@ -8,7 +8,6 @@ const AuthLayout = ({ children }) => {
   const { isAuth, isLoading } = useUser();
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  console.log("auth", loading);
 
   useEffect(() => {
     if (!isLoading) {

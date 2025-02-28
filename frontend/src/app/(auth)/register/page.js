@@ -34,7 +34,6 @@ const Register = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     setLoading(true);
-    console.log("User Data:", userData);
     const res = userRegister({ credentials: userData });
     if (res) {
       router.push("/profile");

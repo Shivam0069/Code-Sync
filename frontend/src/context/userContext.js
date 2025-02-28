@@ -112,6 +112,24 @@ const UserContext = ({ children }) => {
     }
   };
 
+  const createFile = async (file) => {
+    console.log("file", file);
+
+    try {
+      const res = await axios.post(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/files/create`,
+        file,
+        { withCredentials: true }
+      );
+      if (res.status === 201) {
+        setUserData({ ...userData, files: [...userData.files, res.data.file] });
+        return true;
+      }
+    } catch (error) {
+      return false;
+    }
+  };
+
   const value = {
     userData,
     isLoading,
@@ -119,6 +137,7 @@ const UserContext = ({ children }) => {
     userRegister,
     deleteFile,
     isAuth,
+    createFile,
   };
 
   return (
