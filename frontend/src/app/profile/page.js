@@ -104,64 +104,6 @@ export default function Profile() {
                     </td>
                   </tr>
                 ))}
-                {userData?.files?.map((file, idx) => (
-                  <tr
-                    key={idx}
-                    className="border-t border-white bg-gray-700 hover:bg-gray-800"
-                  >
-                    <td className="py-3 px-4">
-                      {file.name}
-                      {file.extension}
-                    </td>
-                    <td className="py-3 px-4">
-                      {new Date(file?.createdAt).toLocaleString()}
-                    </td>
-
-                    <td className="py-3 px-4 text-right">
-                      <button
-                        onClick={() => handleEdit(file.fileId)}
-                        className="text-blue-600 hover:text-blue-800 mr-3"
-                      >
-                        <Edit size={18} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(file.fileId)}
-                        className="text-red-600 hover:text-red-800"
-                      >
-                        <Trash size={18} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {userData?.files?.map((file, idx) => (
-                  <tr
-                    key={idx}
-                    className="border-t border-white bg-gray-700 hover:bg-gray-800"
-                  >
-                    <td className="py-3 px-4">
-                      {file.name}
-                      {file.extension}
-                    </td>
-                    <td className="py-3 px-4">
-                      {new Date(file?.createdAt).toLocaleString()}
-                    </td>
-
-                    <td className="py-3 px-4 text-right">
-                      <button
-                        onClick={() => handleEdit(file.fileId)}
-                        className="text-blue-600 hover:text-blue-800 mr-3"
-                      >
-                        <Edit size={18} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(file.fileId)}
-                        className="text-red-600 hover:text-red-800"
-                      >
-                        <Trash size={18} />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
               </tbody>
             </table>
           </div>
