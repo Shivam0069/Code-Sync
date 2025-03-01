@@ -25,9 +25,9 @@ export default function Profile() {
   };
 
   return (
-    <div className="flex flex-col md:flex-row w-full min-h-screen bg-gray-50">
+    <div className="flex flex-col md:flex-row w-full md:max-h-screen  bg-[#1c1e29] text-[#fff] ">
       {/* Left Panel - User Profile */}
-      <div className="w-full md:w-1/4 bg-white p-6 shadow-md">
+      <div className="w-full md:w-1/4 md:h-screen bg-[#1c1e29] text-[#fff] p-6 border-r border-x-gray-500">
         <div className="flex flex-col items-center">
           <div className="relative w-32 h-32 rounded-full flex items-center justify-center overflow-hidden mb-4">
             {/* <Image
@@ -39,13 +39,13 @@ export default function Profile() {
             <User className="w-20 h-20" />
           </div>
           <h2 className="text-xl font-bold">{userData?.userName}</h2>
-          <p className="text-gray-600">{userData?.email}</p>
+          <p className="">{userData?.email}</p>
         </div>
       </div>
 
       {/* Middle Section - Files */}
-      <div className="w-full md:w-3/4 p-6">
-        <div className="flex justify-between items-center mb-6">
+      <div className="w-full md:w-3/4 p-6 max-h-screen   ">
+        <div className="flex justify-between items-center mb-6 border-b border-x-gray-500 pb-4">
           <h1 className="text-2xl font-bold">Files</h1>
           <button
             onClick={handleCreateRoom}
@@ -57,10 +57,10 @@ export default function Profile() {
         </div>
 
         {/* Files List */}
-        <div className="bg-white rounded-md shadow-md overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-100">
+        <div className=" text-[#fff] shadow-md  shadow-gray-500 md:overflow-y-auto md:max-h-[80vh] ">
+          <div className="overflow-x-auto  ">
+            <table className="w-full ">
+              <thead className="bg-gray-900 text-[#fff] sticky top-0 left-0 z-10">
                 <tr>
                   <th className="text-left py-3 px-4 font-semibold text-sm">
                     Name
@@ -74,13 +74,74 @@ export default function Profile() {
                   </th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="">
                 {userData?.files?.map((file, idx) => (
                   <tr
                     key={idx}
-                    className="border-t border-gray-200 hover:bg-gray-50"
+                    className="border-t border-white bg-gray-700 hover:bg-gray-800"
                   >
-                    <td className="py-3 px-4">{file.name}</td>
+                    <td className="py-3 px-4">
+                      {file.name}
+                      {file.extension}
+                    </td>
+                    <td className="py-3 px-4">
+                      {new Date(file?.createdAt).toLocaleString()}
+                    </td>
+
+                    <td className="py-3 px-4 text-right">
+                      <button
+                        onClick={() => handleEdit(file.fileId)}
+                        className="text-blue-600 hover:text-blue-800 mr-3"
+                      >
+                        <Edit size={18} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(file.fileId)}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        <Trash size={18} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {userData?.files?.map((file, idx) => (
+                  <tr
+                    key={idx}
+                    className="border-t border-white bg-gray-700 hover:bg-gray-800"
+                  >
+                    <td className="py-3 px-4">
+                      {file.name}
+                      {file.extension}
+                    </td>
+                    <td className="py-3 px-4">
+                      {new Date(file?.createdAt).toLocaleString()}
+                    </td>
+
+                    <td className="py-3 px-4 text-right">
+                      <button
+                        onClick={() => handleEdit(file.fileId)}
+                        className="text-blue-600 hover:text-blue-800 mr-3"
+                      >
+                        <Edit size={18} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(file.fileId)}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        <Trash size={18} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {userData?.files?.map((file, idx) => (
+                  <tr
+                    key={idx}
+                    className="border-t border-white bg-gray-700 hover:bg-gray-800"
+                  >
+                    <td className="py-3 px-4">
+                      {file.name}
+                      {file.extension}
+                    </td>
                     <td className="py-3 px-4">
                       {new Date(file?.createdAt).toLocaleString()}
                     </td>
