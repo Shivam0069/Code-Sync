@@ -6,6 +6,7 @@ import toast from "react-hot-toast";
 import Image from "next/image";
 import { useUser } from "@/context/userContext";
 import logo from "../../../assets/code-sync.png";
+import { House } from "lucide-react";
 
 const Home = () => {
   const router = useRouter();
@@ -39,16 +40,22 @@ const Home = () => {
   };
 
   return (
-    <div className="homePageWrapper">
+    <div className="homePageWrapper ">
       <div className="formWrapper">
-        <Image
-          className="homePageLogo"
-          src={logo.src}
-          alt="Code Sync Logo"
-          width={200}
-          height={50}
-          priority
-        />
+        <div className="flex justify-between ">
+          <Image
+            className="homePageLogo"
+            src={logo.src}
+            alt="Code Sync Logo"
+            width={200}
+            height={50}
+            priority
+          />
+          <House
+            onClick={() => router.push("/profile")}
+            className="cursor-pointer hover:scale-125 transition-all duration-300 ease-in-out"
+          />
+        </div>
         <h4 className="mainLabel">Paste invitation ROOM ID</h4>
         <div className="inputGroup ">
           <input

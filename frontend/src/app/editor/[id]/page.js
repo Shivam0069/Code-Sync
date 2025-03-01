@@ -1,14 +1,15 @@
 "use client";
+import ACTIONS from "@/Actions";
 import { use, useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
-import ACTIONS from "@/Actions";
 
+import Client from "@/components/Client";
+import Editor from "@/components/Editor";
+import Modal from "@/components/Model";
+import { useUser } from "@/context/userContext";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import Editor from "@/components/Editor";
-import Client from "@/components/Client";
 import axios from "axios";
-import { useUser } from "@/context/userContext";
 
 const EditorPage = ({ params }) => {
   const socketRef = useRef(null);
@@ -18,7 +19,7 @@ const EditorPage = ({ params }) => {
   const roomId = unwrappedParams.id;
   const [clients, setClients] = useState([]);
   const [initialCode, setInitialCode] = useState("");
-  const { createFile } = useUser();
+  const { createFile, userData } = useUser();
 
   // Voice chat state
   const [isInVoiceChat, setIsInVoiceChat] = useState(false);
@@ -26,10 +27,40 @@ const EditorPage = ({ params }) => {
   const localStreamRef = useRef(null);
   const peerConnectionsRef = useRef({});
   const audioElementsRef = useRef({}); // Track audio elements for each peer
+  const [fileType, setFileType] = useState("new");
+
+  const [importedFileId, setImportedFileId] = useState("");
   const username = useRef(
-    localStorage.getItem("username") ||
+    userData?.userName ||
+      localStorage.getItem("username") ||
       `User-${Math.floor(Math.random() * 1000)}`
   );
+
+  const [showImportModal, setShowImportModal] = useState(false);
+
+  // Function to handle file import selection
+  const handleFileImport = async (file) => {
+    try {
+      const res = await axios.get(
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/files/getFile/${file.fileId}`,
+        {
+          withCredentials: true,
+        }
+      );
+      if (res.status == 200) {
+        setInitialCode(res.data?.file?.content);
+        codeRef.current = res.data?.file?.content;
+        toast.success("File imported successfully");
+        setFileType("imported");
+        setImportedFileId(file.fileId);
+      }
+    } catch (error) {
+      console.log("Error importing file:", error);
+      toast.error("Error importing file");
+    } finally {
+      setShowImportModal(false);
+    }
+  };
 
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
@@ -41,6 +72,7 @@ const EditorPage = ({ params }) => {
       setInitialCode(fileContent);
 
       codeRef.current = fileContent; // Update the codeRef with the file content
+      setFileType("uploaded");
       socketRef.current.emit(ACTIONS.CODE_CHANGE, {
         roomId,
         code: fileContent,
@@ -301,6 +333,27 @@ const EditorPage = ({ params }) => {
   }
 
   const saveCodeHandler = async () => {
+    if (fileType === "imported") {
+      console.log("id", importedFileId);
+
+      try {
+        const res = await axios.put(
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/files/update`,
+          {
+            fileId: importedFileId,
+            content: codeRef.current,
+          },
+          { withCredentials: true }
+        );
+        if (res.status == 200) {
+          toast.success("File updated successfully");
+        }
+      } catch (error) {
+        console.error(error);
+        toast.error("Error updating file");
+      }
+      return;
+    }
     const content = codeRef.current;
     if (!codeRef.current) {
       toast.error("No code to save");
@@ -311,18 +364,18 @@ const EditorPage = ({ params }) => {
     const fileName = prompt("Enter file name (without extension):", "code");
     if (!fileName) return; // If user cancels, stop execution
 
-    const fileType = prompt(
+    const extension = prompt(
       "Enter file extension (e.g., .txt, .js, .py, .cpp):",
       "txt"
     );
-    if (!fileType) return; // If user cancels, stop execution
+    if (!extension) return; // If user cancels, stop execution
 
     const validExtensions = [".txt", ".js", ".py", ".cpp"];
-    if (!validExtensions.includes(fileType)) {
+    if (!validExtensions.includes(extension)) {
       toast.error("Invalid file type. Please enter a valid extension.");
       return;
     }
-    const fileData = { name: fileName, content: content, extension: fileType };
+    const fileData = { name: fileName, content: content, extension: extension };
     console.log("fileData", fileData);
 
     try {
@@ -336,7 +389,15 @@ const EditorPage = ({ params }) => {
 
   return (
     <div className="mainWrap relative w-full h-screen">
-      <div className="absolute bottom-10 right-4 z-50 flex space-x-2">
+      <div className="absolute bottom-10 right-4 z-40 flex space-x-2">
+        {/* Import Button - New */}
+        <button
+          onClick={() => setShowImportModal(true)}
+          className="bg-purple-600 text-white px-4 py-2 rounded-md shadow-md hover:bg-purple-700 transition"
+        >
+          Import
+        </button>
+
         {/* Upload Button */}
         <label
           htmlFor="fileInput"
@@ -411,6 +472,40 @@ const EditorPage = ({ params }) => {
           initialCode={initialCode}
         />
       </div>
+
+      {/* Import Modal */}
+      {showImportModal && (
+        <Modal
+          title="Import from Saved Files"
+          onClose={() => setShowImportModal(false)}
+        >
+          <div className="overflow-y-auto max-h-64 scroll-smooth scrollbar-hide">
+            {userData?.files.length > 0 ? (
+              <div className="grid gap-2">
+                {userData?.files.map((file, idx) => (
+                  <div
+                    key={idx}
+                    onClick={() => handleFileImport(file)}
+                    className="flex justify-between items-center p-3 bg-gray-100 rounded-md hover:bg-gray-200 cursor-pointer transition"
+                  >
+                    <div className="flex items-center">
+                      <span className="text-lg font-medium">
+                        {file?.name}
+                        {file?.extension}
+                      </span>
+                    </div>
+                    <span className="text-sm text-gray-500">
+                      {new Date(file?.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p>No saved files found.</p>
+            )}
+          </div>
+        </Modal>
+      )}
     </div>
   );
 };

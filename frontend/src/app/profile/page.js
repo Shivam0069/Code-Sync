@@ -85,7 +85,7 @@ export default function Profile() {
                       {file.extension}
                     </td>
                     <td className="py-3 px-4">
-                      {new Date(file?.createdAt).toLocaleString()}
+                      {new Date(file?.createdAt).toLocaleDateString()}
                     </td>
 
                     <td className="py-3 px-4 text-right">
