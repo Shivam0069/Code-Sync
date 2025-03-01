@@ -4,6 +4,7 @@ import axios from "axios";
 import { use, useEffect, useRef, useState } from "react";
 import { House, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
+import toast from "react-hot-toast";
 
 const FilePage = ({ params }) => {
   const unwrappedParams = use(params);
@@ -43,6 +44,7 @@ const FilePage = ({ params }) => {
         { withCredentials: true }
       );
       setIsSaving(false);
+      toast.success("File saved successfully!");
     } catch (error) {
       console.error("Error saving code:", error);
       setIsSaving(false);
