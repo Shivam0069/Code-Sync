@@ -23,10 +23,12 @@ const EditorPage = ({ params }) => {
 
   // Voice chat state
   const [isInVoiceChat, setIsInVoiceChat] = useState(false);
-  const [isListening, setIsListening] = useState(true); // New state for listening mode
-  const localStreamRef = useRef(null);
+  const [isListening, setIsListening] = useState(true);
+  const [isAudioMuted, setIsAudioMuted] = useState(true);
+  const audioRef = useRef(null);
   const peerConnectionsRef = useRef({});
-  const audioElementsRef = useRef({}); // Track audio elements for each peer
+  const rtp_aud_sendersRef = useRef({});
+  const audioElementsRef = useRef({});
   const [fileType, setFileType] = useState("new");
 
   const [importedFileId, setImportedFileId] = useState("");
@@ -81,118 +83,255 @@ const EditorPage = ({ params }) => {
     reader.readAsText(file); // Read the file as text
   };
 
-  // WebRTC configuration
-  const configuration = {
+  const iceConfiguration = {
     iceServers: [
-      { urls: "stun:stun.l.google.com:19302" },
-      { urls: "stun:stun1.l.google.com:19302" },
+      {
+        urls: "stun:stun.l.google.com:19302",
+      },
+      {
+        urls: "stun:stun1.l.google.com:19302",
+      },
     ],
   };
 
-  const getOrCreatePeerConnection = (peerId) => {
-    if (!peerConnectionsRef.current[peerId]) {
-      const peerConnection = new RTCPeerConnection(configuration);
-      peerConnectionsRef.current[peerId] = peerConnection;
+  async function loadAudio() {
+    try {
+      // Only get a new stream if we don't already have one
+      if (!audioRef.current) {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: false,
+          audio: true,
+        });
+        audioRef.current = stream.getAudioTracks()[0];
+        audioRef.current.enabled = !isAudioMuted; // Set initial state based on mute status
+      }
+      return audioRef.current;
+    } catch (e) {
+      console.error("Error getting audio stream:", e);
+      toast.error("Could not access microphone");
+      return null;
+    }
+  }
 
-      // Add local stream if it exists and we're in voice chat
-      if (localStreamRef.current && isInVoiceChat) {
-        localStreamRef.current.getTracks().forEach((track) => {
-          peerConnection.addTrack(track, localStreamRef.current);
+  function createAudioElement(connId) {
+    if (!audioElementsRef.current[connId]) {
+      const audioEl = document.createElement("audio");
+      audioEl.id = `audio_${connId}`;
+      audioEl.autoplay = true;
+      document.body.appendChild(audioEl);
+      audioElementsRef.current[connId] = audioEl;
+    }
+
+    console.log("audioElementsRef", audioElementsRef);
+
+    return audioElementsRef.current[connId];
+  }
+
+  function connection_status(connection) {
+    if (
+      connection &&
+      (connection.connectionState === "new" ||
+        connection.connectionState === "connecting" ||
+        connection.connectionState === "connected")
+    ) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  async function updateMediaSenders(track) {
+    for (const connId in peerConnectionsRef.current) {
+      if (connection_status(peerConnectionsRef.current[connId])) {
+        if (
+          rtp_aud_sendersRef.current[connId] &&
+          rtp_aud_sendersRef.current[connId].track
+        ) {
+          rtp_aud_sendersRef.current[connId].replaceTrack(track);
+        } else {
+          rtp_aud_sendersRef.current[connId] =
+            peerConnectionsRef.current[connId].addTrack(track);
+        }
+      }
+    }
+  }
+
+  function removeMediaSenders() {
+    for (const connId in peerConnectionsRef.current) {
+      if (
+        rtp_aud_sendersRef.current[connId] &&
+        connection_status(peerConnectionsRef.current[connId])
+      ) {
+        peerConnectionsRef.current[connId].removeTrack(
+          rtp_aud_sendersRef.current[connId]
+        );
+        rtp_aud_sendersRef.current[connId] = null;
+      }
+    }
+  }
+
+  async function setConnection(connid) {
+    const connection = new RTCPeerConnection(iceConfiguration);
+
+    connection.onnegotiationneeded = async function () {
+      await setOffer(connid);
+    };
+
+    connection.onicecandidate = function (event) {
+      if (event.candidate) {
+        socketRef.current.emit("SDPProcess", {
+          message: JSON.stringify({ icecandidate: event.candidate }),
+          to_connid: connid,
         });
       }
+    };
 
-      // Handle incoming tracks
-      peerConnection.ontrack = (event) => {
-        if (!audioElementsRef.current[peerId]) {
-          const audio = new Audio();
-          audio.autoplay = true;
-          audioElementsRef.current[peerId] = audio;
-        }
-        audioElementsRef.current[peerId].srcObject = event.streams[0];
-        if (isListening) {
-          audioElementsRef.current[peerId].play().catch(console.error);
-        }
-      };
+    connection.ontrack = function (event) {
+      if (event.track.kind === "audio") {
+        const audioEl = createAudioElement(connid);
+        const remoteStream = new MediaStream();
+        remoteStream.addTrack(event.track);
+        audioEl.srcObject = remoteStream;
+      }
+    };
 
-      // Handle ICE candidates
-      peerConnection.onicecandidate = (event) => {
-        if (event.candidate) {
-          socketRef.current.emit(ACTIONS.ICE_CANDIDATE, {
-            candidate: event.candidate,
-            to: peerId,
-          });
-        }
-      };
+    peerConnectionsRef.current[connid] = connection;
+
+    // If audio is already enabled, add it to the new connection
+    if (audioRef.current && !isAudioMuted) {
+      rtp_aud_sendersRef.current[connid] = connection.addTrack(
+        audioRef.current
+      );
     }
-    return peerConnectionsRef.current[peerId];
-  };
+
+    return connection;
+  }
+
+  async function setOffer(connid) {
+    const connection = peerConnectionsRef.current[connid];
+    try {
+      const offer = await connection.createOffer();
+      await connection.setLocalDescription(offer);
+
+      socketRef.current.emit("SDPProcess", {
+        message: JSON.stringify({
+          offer: connection.localDescription,
+        }),
+        to_connid: connid,
+      });
+    } catch (error) {
+      console.error("Error creating offer:", error);
+    }
+  }
+
+  async function SDPProcess(message, from_connid) {
+    message = JSON.parse(message);
+
+    if (message.answer) {
+      await peerConnectionsRef.current[from_connid].setRemoteDescription(
+        new RTCSessionDescription(message.answer)
+      );
+    } else if (message.offer) {
+      if (!peerConnectionsRef.current[from_connid]) {
+        await setConnection(from_connid);
+      }
+
+      await peerConnectionsRef.current[from_connid].setRemoteDescription(
+        new RTCSessionDescription(message.offer)
+      );
+
+      const answer = await peerConnectionsRef.current[
+        from_connid
+      ].createAnswer();
+      await peerConnectionsRef.current[from_connid].setLocalDescription(answer);
+
+      socketRef.current.emit("SDPProcess", {
+        message: JSON.stringify({
+          answer: answer,
+        }),
+        to_connid: from_connid,
+      });
+    } else if (message.icecandidate) {
+      if (!peerConnectionsRef.current[from_connid]) {
+        await setConnection(from_connid);
+      }
+
+      try {
+        await peerConnectionsRef.current[from_connid].addIceCandidate(
+          message.icecandidate
+        );
+      } catch (e) {
+        console.error("Error adding ICE candidate:", e);
+      }
+    }
+  }
 
   useEffect(() => {
     const init = async () => {
       socketRef.current = io(process.env.NEXT_PUBLIC_BACKEND_URL);
 
-      socketRef.current.on("connect_error", (err) => handleErrors(err));
-      socketRef.current.on("connect_failed", (err) => handleErrors(err));
+      socketRef.current.on("connect", () => {
+        if (socketRef.current.connected) {
+          console.log("Connected to server", socketRef.current.id);
 
-      function handleErrors(e) {
-        toast.error("Socket connection failed, try again later.");
-        router.push("/");
-      }
-
-      socketRef.current.emit(ACTIONS.JOIN, {
-        roomId,
-        username: username.current,
-      });
-
-      // Existing socket handlers...
-      socketRef.current.on(
-        ACTIONS.JOINED,
-        ({ clients, username, socketId }) => {
-          if (username !== username.current) {
-            toast.success(`${username} joined the room.`);
-          }
-          setClients(clients);
-          socketRef.current.emit(ACTIONS.SYNC_CODE, {
-            code: codeRef.current,
-            socketId,
+          socketRef.current.emit(ACTIONS.JOIN, {
+            roomId,
+            username: username.current,
           });
         }
-      );
+      });
 
-      // Voice chat handlers
-      socketRef.current.on(ACTIONS.VOICE_OFFER, async ({ offer, from }) => {
-        const peerConnection = getOrCreatePeerConnection(from);
-        await peerConnection.setRemoteDescription(
-          new RTCSessionDescription(offer)
-        );
-        const answer = await peerConnection.createAnswer();
-        await peerConnection.setLocalDescription(answer);
+      socketRef.current.on("new_user", async ({ username, connection_id }) => {
+        console.log("new user", username, connection_id);
 
-        socketRef.current.emit(ACTIONS.VOICE_ANSWER, {
-          answer,
-          to: from,
+        setClients((prevUsers) => {
+          // Check if this client is already in the list
+          const exists = prevUsers.some(
+            (user) => user.connection_id === connection_id
+          );
+          if (exists) return prevUsers;
+
+          return [...prevUsers, { username, connection_id }];
         });
+
+        await setConnection(connection_id);
       });
 
-      socketRef.current.on(ACTIONS.VOICE_ANSWER, async ({ answer, from }) => {
-        const pc = peerConnectionsRef.current[from];
-        if (pc) {
-          await pc.setRemoteDescription(new RTCSessionDescription(answer));
-        }
+      socketRef.current.on("old_users", async ({ clients }) => {
+        setClients(clients);
+
+        // Setup connections with all existing clients
+        await Promise.all(
+          clients.map(async (client) => {
+            if (client.connection_id !== socketRef.current.id) {
+              await setConnection(client.connection_id);
+            }
+          })
+        );
       });
 
-      socketRef.current.on(
-        ACTIONS.ICE_CANDIDATE,
-        async ({ candidate, from }) => {
-          const pc = peerConnectionsRef.current[from];
-          if (pc) {
-            await pc.addIceCandidate(new RTCIceCandidate(candidate));
+      socketRef.current.on("SDPProcess", async function (data) {
+        await SDPProcess(data.message, data.from_connid);
+      });
+
+      socketRef.current.on(ACTIONS.DISCONNECTED, ({ socketId }) => {
+        // Remove the disconnected client from the list
+        setClients((prev) =>
+          prev.filter((client) => client.connection_id !== socketId)
+        );
+
+        // Close and clean up the peer connection
+        if (peerConnectionsRef.current[socketId]) {
+          peerConnectionsRef.current[socketId].close();
+          delete peerConnectionsRef.current[socketId];
+          delete rtp_aud_sendersRef.current[socketId];
+
+          // Clean up audio element
+          if (audioElementsRef.current[socketId]) {
+            audioElementsRef.current[socketId].remove();
+            delete audioElementsRef.current[socketId];
           }
         }
-      );
-
-      socketRef.current.on("voice-chat-users-updated", ({ clients }) => {
-        setClients(clients);
       });
     };
 
@@ -201,86 +340,66 @@ const EditorPage = ({ params }) => {
     }
 
     return () => {
-      // Cleanup
-      Object.values(audioElementsRef.current).forEach((audio) => {
-        audio.srcObject = null;
-        audio.remove();
+      // Clean up all audio elements
+      Object.values(audioElementsRef.current).forEach((el) => {
+        if (el && el.parentNode) {
+          el.parentNode.removeChild(el);
+        }
       });
-      Object.values(peerConnectionsRef.current).forEach((pc) => pc.close());
-      if (localStreamRef.current) {
-        localStreamRef.current.getTracks().forEach((track) => track.stop());
+
+      // Close all peer connections
+      Object.values(peerConnectionsRef.current).forEach((conn) => {
+        if (conn) {
+          conn.close();
+        }
+      });
+
+      // Stop audio track if it exists
+      if (audioRef.current) {
+        audioRef.current.enabled = false;
+        const tracks = [audioRef.current];
+        tracks.forEach((track) => {
+          if (track) track.stop();
+        });
       }
+
       socketRef.current?.disconnect();
     };
   }, [roomId]);
 
-  const toggleListening = () => {
-    setIsListening(!isListening);
-    Object.values(audioElementsRef.current).forEach((audio) => {
-      if (!isListening) {
-        audio.play().catch(console.error);
-      } else {
-        audio.pause();
-      }
-    });
-  };
-
-  const toggleVoiceChat = async () => {
+  async function muteUnMuteHandler() {
+    console.log("rtp_aud_sendersRef", rtp_aud_sendersRef.current);
     try {
-      if (!isInVoiceChat) {
-        // Start voice chat
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: true,
-        });
-        localStreamRef.current = stream;
-
-        // Add tracks to existing peer connections
-        Object.entries(peerConnectionsRef.current).forEach(([peerId, pc]) => {
-          stream.getTracks().forEach((track) => {
-            pc.addTrack(track, stream);
-          });
-        });
-
-        // Notify other users
-        socketRef.current.emit(ACTIONS.START_VOICE_CHAT, { roomId });
-
-        // Create new connections with voice chat users
-        clients.forEach((client) => {
-          if (client.isInVoiceChat && client.id !== socketRef.current?.id) {
-            const pc = getOrCreatePeerConnection(client.id);
-            pc.createOffer().then((offer) => {
-              pc.setLocalDescription(offer).then(() => {
-                socketRef.current.emit(ACTIONS.VOICE_OFFER, {
-                  offer,
-                  to: client.id,
-                });
-              });
-            });
-          }
-        });
-      } else {
-        // Stop voice chat but maintain listening connections
-        if (localStreamRef.current) {
-          localStreamRef.current.getTracks().forEach((track) => track.stop());
-          localStreamRef.current = null;
-        }
-
-        // Remove local tracks from peer connections but keep connections alive
-        Object.values(peerConnectionsRef.current).forEach((pc) => {
-          pc.getSenders().forEach((sender) => {
-            pc.removeTrack(sender);
-          });
-        });
-
-        socketRef.current.emit(ACTIONS.END_VOICE_CHAT, { roomId });
+      // Make sure we have audio access
+      if (!audioRef.current) {
+        await loadAudio();
       }
 
-      setIsInVoiceChat(!isInVoiceChat);
+      if (!audioRef.current) {
+        toast.error("Audio permission has not been granted");
+        return;
+      }
+
+      if (isAudioMuted) {
+        // Unmute - just enable the track instead of creating a new one
+        audioRef.current.enabled = true;
+        await updateMediaSenders(audioRef.current);
+        setIsAudioMuted(false);
+        toast.success("Microphone activated");
+      } else {
+        // Mute - just disable the track instead of stopping it
+        audioRef.current.enabled = false;
+        setIsAudioMuted(true);
+        toast.success("Microphone muted");
+
+        // Note: We're no longer stopping or nullifying the track
+        // This allows us to re-enable it later without having to request permissions again
+      }
     } catch (error) {
-      toast.error("Error accessing microphone");
-      console.error("Error accessing microphone:", error);
+      console.error("Error toggling mute:", error);
+      toast.error("Could not toggle microphone");
     }
-  };
+  }
 
   async function copyRoomId() {
     try {
@@ -311,11 +430,11 @@ const EditorPage = ({ params }) => {
 
     const fileType = prompt(
       "Enter file extension (e.g., txt, js, py, cpp):",
-      ".txt"
+      "txt"
     );
     if (!fileType) return; // If user cancels, stop execution
 
-    const validExtensions = [".txt", ".js", ".py", ".cpp"];
+    const validExtensions = ["txt", "js", "py", "cpp"];
     if (!validExtensions.includes(fileType)) {
       toast.error("Invalid file type. Please enter a valid extension.");
       return;
@@ -334,8 +453,6 @@ const EditorPage = ({ params }) => {
 
   const saveCodeHandler = async () => {
     if (fileType === "imported") {
-      console.log("id", importedFileId);
-
       try {
         const res = await axios.put(
           `${process.env.NEXT_PUBLIC_BACKEND_URL}/files/update`,
@@ -354,8 +471,9 @@ const EditorPage = ({ params }) => {
       }
       return;
     }
+
     const content = codeRef.current;
-    if (!codeRef.current) {
+    if (!content) {
       toast.error("No code to save");
       return;
     }
@@ -365,18 +483,17 @@ const EditorPage = ({ params }) => {
     if (!fileName) return; // If user cancels, stop execution
 
     const extension = prompt(
-      "Enter file extension (e.g., .txt, .js, .py, .cpp):",
+      "Enter file extension (e.g., txt, js, py, cpp):",
       "txt"
     );
     if (!extension) return; // If user cancels, stop execution
 
-    const validExtensions = [".txt", ".js", ".py", ".cpp"];
+    const validExtensions = ["txt", "js", "py", "cpp"];
     if (!validExtensions.includes(extension)) {
       toast.error("Invalid file type. Please enter a valid extension.");
       return;
     }
     const fileData = { name: fileName, content: content, extension: extension };
-    console.log("fileData", fileData);
 
     try {
       const res = await createFile(fileData);
@@ -436,21 +553,11 @@ const EditorPage = ({ params }) => {
           <div className="clientsList">
             {clients.map((client) => (
               <Client
-                key={client.id}
+                key={client.connection_id}
                 username={client.username}
-                isInVoiceChat={client.isInVoiceChat}
-                onVoiceToggle={
-                  client.id === socketRef.current?.id
-                    ? toggleVoiceChat
-                    : undefined
-                }
-                isListening={isListening}
-                onListeningToggle={
-                  client.id === socketRef.current?.id
-                    ? toggleListening
-                    : undefined
-                }
-                isSelf={client.id === socketRef.current?.id}
+                MicButton={muteUnMuteHandler}
+                isSelf={client.connection_id === socketRef.current?.id}
+                isAudioMuted={isAudioMuted}
               />
             ))}
           </div>
@@ -480,9 +587,9 @@ const EditorPage = ({ params }) => {
           onClose={() => setShowImportModal(false)}
         >
           <div className="overflow-y-auto max-h-64 scroll-smooth scrollbar-hide">
-            {userData?.files.length > 0 ? (
+            {userData?.files && userData.files.length > 0 ? (
               <div className="grid gap-2">
-                {userData?.files.map((file, idx) => (
+                {userData.files.map((file, idx) => (
                   <div
                     key={idx}
                     onClick={() => handleFileImport(file)}
