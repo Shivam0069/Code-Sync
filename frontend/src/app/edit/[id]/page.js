@@ -5,6 +5,11 @@ import { use, useEffect, useRef, useState } from "react";
 import { House, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
+import ai from "../../../assets/ai.jpg";
+import Image from "next/image";
+import Modal from "@/components/Model";
+import askGemini from "@/helper/Gemini";
+import Loader from "@/components/Loader";
 
 const FilePage = ({ params }) => {
   const unwrappedParams = use(params);
@@ -12,8 +17,33 @@ const FilePage = ({ params }) => {
   const [fileContent, setFileContent] = useState("");
   const [file, setFile] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [askAIOpen, setAskAIOpen] = useState(false);
+  const [question, setQuestion] = useState("");
+  const [askCode, setAskCode] = useState("");
+  const [loading, setLoading] = useState(false);
   const codeRef = useRef("");
   const router = useRouter();
+
+  const askHandler = async () => {
+    if (question.trim() === "") return;
+
+    try {
+      setLoading(true);
+      const result = await askGemini(codeRef.current, question); // Await the async call
+
+      const codeOnly =
+        result.match(/```(?:\w+)?\n([\s\S]*?)```/)?.[1] || result;
+
+      console.log("Gemini Response:\n", codeOnly);
+
+      setAskCode(codeOnly); // Triggers useEffect to update CodeMirror
+      setAskAIOpen(false);
+    } catch (err) {
+      console.error("Error from Gemini:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (fileId) {
@@ -61,6 +91,7 @@ const FilePage = ({ params }) => {
 
   return (
     <div className="flex h-screen text-white bg-gray-900">
+      {loading && <Loader />}
       {/* Left Panel */}
       <div className="w-64 bg-gray-800 p-4 flex flex-col border-r border-gray-700">
         <div className="border-b border-gray-700 mb-6 pb-4 mt-2 ">
@@ -77,7 +108,7 @@ const FilePage = ({ params }) => {
           <p className="text-gray-400 text-sm mt-1">File Editor</p>
         </div>
 
-        <div className="mt-auto">
+        <div className="mt-auto flex flex-col gap-4">
           <button
             onClick={() => {
               if (codeRef) handleSave(codeRef.current);
@@ -87,6 +118,19 @@ const FilePage = ({ params }) => {
           >
             <Save size={18} />
             {isSaving ? "Saving..." : "Save Changes"}
+          </button>
+          <button
+            onClick={() => setAskAIOpen(true)}
+            className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors"
+          >
+            <Image
+              src={ai}
+              alt="AI"
+              width={40}
+              height={40}
+              className="rounded"
+            />
+            Ask Gemini
           </button>
         </div>
       </div>
@@ -98,8 +142,32 @@ const FilePage = ({ params }) => {
           fileId={fileId}
           onContentChange={(code) => (codeRef.current = code)}
           onSave={handleSave}
+          geminiCode={askCode}
         />
       </div>
+
+      {askAIOpen && (
+        <Modal
+          title="Ask Gemini"
+          onClose={() => {
+            setAskAIOpen(false);
+            setQuestion("");
+          }}
+        >
+          <textarea
+            onChange={(e) => setQuestion(e.target.value)}
+            value={question}
+            className="w-full h-32 p-2 border border-gray-700 rounded-md bg-gray-800 text-white"
+            placeholder="Type your question here..."
+          ></textarea>
+          <button
+            onClick={askHandler}
+            className="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors"
+          >
+            {loading ? "Generating..." : "Ask"}
+          </button>
+        </Modal>
+      )}
     </div>
   );
 };

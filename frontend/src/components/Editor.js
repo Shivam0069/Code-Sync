@@ -10,7 +10,13 @@ import "codemirror/addon/edit/closetag";
 import "codemirror/addon/edit/closebrackets";
 import ACTIONS from "@/Actions";
 
-const Editor = ({ onCodeChange, socketRef, roomId, initialCode }) => {
+const Editor = ({
+  onCodeChange,
+  socketRef,
+  roomId,
+  initialCode,
+  geminiCode,
+}) => {
   const editorRef = useRef(null);
 
   useEffect(() => {
@@ -60,6 +66,16 @@ const Editor = ({ onCodeChange, socketRef, roomId, initialCode }) => {
       editorRef.current.setValue(initialCode || "");
     }
   }, [initialCode]); // Watch for changes in initialCode
+
+  useEffect(() => {
+    if (
+      geminiCode.length > 0 &&
+      editorRef.current &&
+      geminiCode !== editorRef.current.getValue()
+    ) {
+      editorRef.current.setValue(geminiCode || "");
+    }
+  }, [geminiCode]);
 
   useEffect(() => {
     if (socketRef.current) {

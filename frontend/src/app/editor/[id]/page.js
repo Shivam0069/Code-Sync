@@ -10,6 +10,10 @@ import { useUser } from "@/context/userContext";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import axios from "axios";
+import Image from "next/image";
+import ai from "../../../assets/ai.jpg";
+import askGemini from "@/helper/Gemini";
+import Loader from "@/components/Loader";
 
 const EditorPage = ({ params }) => {
   const socketRef = useRef(null);
@@ -20,6 +24,10 @@ const EditorPage = ({ params }) => {
   const [clients, setClients] = useState([]);
   const [initialCode, setInitialCode] = useState("");
   const { createFile, userData } = useUser();
+  const [question, setQuestion] = useState("");
+  const [askAIOpen, setAskAIOpen] = useState(false);
+  const [askCode, setAskCode] = useState("");
+  const [loading, setLoading] = useState(false);
 
   // Voice chat state
   const [isInVoiceChat, setIsInVoiceChat] = useState(false);
@@ -504,8 +512,31 @@ const EditorPage = ({ params }) => {
     }
   };
 
+  const askHandler = async () => {
+    if (question.trim() === "") return;
+
+    try {
+      setLoading(true);
+      const result = await askGemini(codeRef.current, question); // Await the async call
+
+      const codeOnly =
+        result.match(/```(?:\w+)?\n([\s\S]*?)```/)?.[1] || result;
+
+      console.log("Gemini Response:\n", codeOnly);
+
+      setAskCode(codeOnly); // Triggers useEffect to update CodeMirror
+      setAskAIOpen(false);
+    } catch (err) {
+      console.error("Error from Gemini:", err);
+    } finally {
+      setLoading(false);
+      setQuestion("");
+    }
+  };
+
   return (
     <div className="mainWrap relative w-full h-screen">
+      {loading && <Loader />}
       <div className="absolute bottom-10 right-4 z-40 flex space-x-2">
         {/* Import Button - New */}
         <button
@@ -562,11 +593,19 @@ const EditorPage = ({ params }) => {
             ))}
           </div>
         </div>
+
         <button className="btn copyBtn" onClick={copyRoomId}>
           Copy Room ID
         </button>
         <button className="btn leaveBtn" onClick={leaveRoom}>
           Leave Room
+        </button>
+        <button
+          onClick={() => setAskAIOpen(true)}
+          className="w-full mt-2 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors"
+        >
+          <Image src={ai} alt="AI" width={40} height={40} className="rounded" />
+          Ask Gemini
         </button>
       </div>
       <div className="editorWrap">
@@ -577,6 +616,7 @@ const EditorPage = ({ params }) => {
             codeRef.current = code;
           }}
           initialCode={initialCode}
+          geminiCode={askCode}
         />
       </div>
 
@@ -611,6 +651,29 @@ const EditorPage = ({ params }) => {
               <p>No saved files found.</p>
             )}
           </div>
+        </Modal>
+      )}
+
+      {askAIOpen && (
+        <Modal
+          title="Ask Gemini"
+          onClose={() => {
+            setAskAIOpen(false);
+            setQuestion("");
+          }}
+        >
+          <textarea
+            onChange={(e) => setQuestion(e.target.value)}
+            value={question}
+            className="w-full h-32 p-2 border border-gray-700 rounded-md bg-gray-800 text-white"
+            placeholder="Type your question here..."
+          ></textarea>
+          <button
+            onClick={askHandler}
+            className="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors"
+          >
+            {loading ? "Generating..." : "Ask"}
+          </button>
         </Modal>
       )}
     </div>

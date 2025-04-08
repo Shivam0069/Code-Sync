@@ -9,7 +9,13 @@ import "codemirror/mode/clike/clike"; // For C++ and similar languages
 import "codemirror/addon/edit/closetag";
 import "codemirror/addon/edit/closebrackets";
 
-const CodeMirrorEditor = ({ initialCode, fileId, onContentChange, onSave }) => {
+const CodeMirrorEditor = ({
+  initialCode,
+  fileId,
+  onContentChange,
+  onSave,
+  geminiCode,
+}) => {
   const editorRef = useRef(null);
   const [currentContent, setCurrentContent] = useState(initialCode || "");
 
@@ -65,6 +71,15 @@ const CodeMirrorEditor = ({ initialCode, fileId, onContentChange, onSave }) => {
       editorRef.current.setValue(initialCode || "");
     }
   }, [initialCode]); // Watch for changes in initialCode
+  useEffect(() => {
+    if (
+      geminiCode.length > 0 &&
+      editorRef.current &&
+      geminiCode !== editorRef.current.getValue()
+    ) {
+      editorRef.current.setValue(geminiCode || "");
+    }
+  }, [geminiCode]); // Watch for changes in initialCode
 
   return (
     <div className="h-full">
