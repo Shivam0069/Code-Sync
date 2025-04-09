@@ -103,7 +103,7 @@ const FilePage = ({ params }) => {
         <div className="mb-6">
           <h1 className="text-xl font-semibold truncate">
             {file.name}
-            {file.extension}
+            {/* {file.extension} */}
           </h1>
           <p className="text-gray-400 text-sm mt-1">File Editor</p>
         </div>

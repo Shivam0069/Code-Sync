@@ -487,21 +487,21 @@ const EditorPage = ({ params }) => {
     }
 
     // Prompt user for file name and type
-    const fileName = prompt("Enter file name (without extension):", "code");
+    const fileName = prompt("Enter file name:", "code");
     if (!fileName) return; // If user cancels, stop execution
 
-    const extension = prompt(
-      "Enter file extension (e.g., txt, js, py, cpp):",
-      "txt"
-    );
-    if (!extension) return; // If user cancels, stop execution
+    // const extension = prompt(
+    //   "Enter file extension (e.g., txt, js, py, cpp):",
+    //   "txt"
+    // );
+    // if (!extension) return; // If user cancels, stop execution
 
-    const validExtensions = ["txt", "js", "py", "cpp"];
-    if (!validExtensions.includes(extension)) {
-      toast.error("Invalid file type. Please enter a valid extension.");
-      return;
-    }
-    const fileData = { name: fileName, content: content, extension: extension };
+    // const validExtensions = ["txt", "js", "py", "cpp"];
+    // if (!validExtensions.includes(extension)) {
+    //   toast.error("Invalid file type. Please enter a valid extension.");
+    //   return;
+    // }
+    const fileData = { name: fileName, content: content, extension: ".txt" };
 
     try {
       const res = await createFile(fileData);
