@@ -57,7 +57,7 @@ export default function Profile() {
         </div>
 
         {/* Files List */}
-        <div className=" text-[#fff] shadow-md  shadow-gray-500 md:overflow-y-auto md:max-h-[80vh] ">
+        <div className=" text-[#fff] shadow-md  shadow-gray-500 md:overflow-y-auto md:max-h-[80vh] custom-scrollbar">
           <div className="overflow-x-auto  ">
             <table className="w-full ">
               <thead className="bg-gray-900 text-[#fff] sticky top-0 left-0 z-10">

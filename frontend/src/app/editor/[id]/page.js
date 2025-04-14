@@ -14,6 +14,8 @@ import Image from "next/image";
 import ai from "../../../assets/ai.jpg";
 import askGemini from "@/helper/Gemini";
 import Loader from "@/components/Loader";
+import { Menu } from "lucide-react";
+import { X } from "lucide-react";
 
 const EditorPage = ({ params }) => {
   const socketRef = useRef(null);
@@ -28,6 +30,7 @@ const EditorPage = ({ params }) => {
   const [askAIOpen, setAskAIOpen] = useState(false);
   const [askCode, setAskCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   // Voice chat state
   const [isInVoiceChat, setIsInVoiceChat] = useState(false);
@@ -73,6 +76,7 @@ const EditorPage = ({ params }) => {
   };
 
   const handleFileUpload = (event) => {
+    setIsMenuOpen(false);
     const file = event.target.files[0];
     if (!file) return;
 
@@ -427,6 +431,7 @@ const EditorPage = ({ params }) => {
   }
 
   function downloadHandler() {
+    setIsMenuOpen(false);
     if (!codeRef.current) {
       toast.error("No code to download");
       return;
@@ -460,6 +465,7 @@ const EditorPage = ({ params }) => {
   }
 
   const saveCodeHandler = async () => {
+    setIsMenuOpen(false);
     if (fileType === "imported") {
       try {
         const res = await axios.put(
@@ -537,46 +543,66 @@ const EditorPage = ({ params }) => {
   return (
     <div className="mainWrap relative w-full h-screen">
       {loading && <Loader />}
-      <div className="absolute bottom-10 right-4 z-40 flex space-x-2">
-        {/* Import Button - New */}
-        <button
-          onClick={() => setShowImportModal(true)}
-          className="bg-purple-600 text-white px-4 py-2 rounded-md shadow-md hover:bg-purple-700 transition"
-        >
-          Import
-        </button>
 
-        {/* Upload Button */}
-        <label
-          htmlFor="fileInput"
-          className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded-md shadow-md hover:bg-blue-700 transition"
-        >
-          Upload File
-        </label>
-        <input
-          id="fileInput"
-          type="file"
-          accept=".txt,.cpp,.py,.js"
-          onChange={handleFileUpload}
-          className="hidden"
+      {isMenuOpen && (
+        <div className="absolute top-16 right-4 z-40 flex flex-col space-y-2">
+          {/* Import Button - New */}
+
+          <>
+            <button
+              onClick={() => {
+                setShowImportModal(true);
+                setIsMenuOpen(false);
+              }}
+              className="bg-purple-600 text-white px-4 py-2 rounded-md shadow-md hover:bg-purple-700 transition"
+            >
+              Import
+            </button>
+
+            {/* Upload Button */}
+            <label
+              htmlFor="fileInput"
+              className="cursor-pointer bg-blue-600 text-white px-4 py-2 rounded-md shadow-md hover:bg-blue-700 transition"
+            >
+              Upload File
+            </label>
+            <input
+              id="fileInput"
+              type="file"
+              accept=".txt,.cpp,.py,.js"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+
+            {/* Download Button */}
+            <button
+              onClick={downloadHandler}
+              className="bg-green-600 text-white px-4 py-2 rounded-md shadow-md hover:bg-green-700 transition"
+            >
+              Download
+            </button>
+
+            {/* Save Button */}
+            <button
+              onClick={saveCodeHandler}
+              className="bg-yellow-600 text-white px-4 py-2 rounded-md shadow-md hover:bg-yellow-700 transition"
+            >
+              Save
+            </button>
+          </>
+        </div>
+      )}
+      {isMenuOpen ? (
+        <X
+          className="text-white cursor-pointer absolute top-6 right-4 z-40"
+          onClick={() => setIsMenuOpen(false)}
         />
-
-        {/* Download Button */}
-        <button
-          onClick={downloadHandler}
-          className="bg-green-600 text-white px-4 py-2 rounded-md shadow-md hover:bg-green-700 transition"
-        >
-          Download
-        </button>
-
-        {/* Save Button */}
-        <button
-          onClick={saveCodeHandler}
-          className="bg-yellow-600 text-white px-4 py-2 rounded-md shadow-md hover:bg-yellow-700 transition"
-        >
-          Save
-        </button>
-      </div>
+      ) : (
+        <Menu
+          className="text-white cursor-pointer absolute top-6 right-4 z-40"
+          onClick={() => setIsMenuOpen(true)}
+        />
+      )}
 
       <div className="aside">
         <div className="asideInner">
