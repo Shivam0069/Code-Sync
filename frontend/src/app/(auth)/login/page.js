@@ -48,7 +48,7 @@ const Login = () => {
       {loading && <Loader />}
       <form
         onSubmit={handleSubmit}
-        className="bg-white text-black p-8 rounded-lg shadow-md w-full max-w-md"
+        className="bg-white text-black p-8 rounded-lg shadow-md w-full md:max-w-md mx-4"
       >
         <div className="">
           <Image

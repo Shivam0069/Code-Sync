@@ -2,7 +2,7 @@
 import CodeMirrorEditor from "@/components/CodeMirror";
 import axios from "axios";
 import { use, useEffect, useRef, useState } from "react";
-import { House, Save } from "lucide-react";
+import { House, PanelLeft, Save, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import ai from "../../../assets/ai.jpg";
@@ -21,6 +21,7 @@ const FilePage = ({ params }) => {
   const [question, setQuestion] = useState("");
   const [askCode, setAskCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isLeftMenuOpen, setIsLeftMenuOpen] = useState(false);
   const codeRef = useRef("");
   const router = useRouter();
 
@@ -90,10 +91,10 @@ const FilePage = ({ params }) => {
   }
 
   return (
-    <div className="flex h-screen text-white bg-gray-900">
+    <div className="flex h-screen text-white bg-gray-900 relative">
       {loading && <Loader />}
       {/* Left Panel */}
-      <div className="w-64 bg-gray-800 p-4 flex flex-col border-r border-gray-700">
+      <div className="hidden md:flex w-64 bg-gray-800 p-4 flex-col border-r border-gray-700">
         <div className="border-b border-gray-700 mb-6 pb-4 mt-2 ">
           <House
             onClick={() => router.push("/profile")}
@@ -134,17 +135,73 @@ const FilePage = ({ params }) => {
           </button>
         </div>
       </div>
+      {isLeftMenuOpen ? (
+        <X
+          className="text-white cursor-pointer absolute top-3 left-4 z-40 md:hidden"
+          onClick={() => setIsLeftMenuOpen(false)}
+        />
+      ) : (
+        <PanelLeft
+          className="text-white w-4 h-4 cursor-pointer absolute top-3 left-4 z-40 md:hidden"
+          onClick={() => setIsLeftMenuOpen(true)}
+        />
+      )}
+      {isLeftMenuOpen && (
+        <div className="md:hidden flex w-full bg-gray-800 p-4 flex-col border-r border-gray-700">
+          <div className="border-b border-gray-700 mb-6 pb-4 mt-2 flex justify-end">
+            <House
+              onClick={() => router.push("/profile")}
+              className="cursor-pointer "
+            />
+          </div>
+          <div className="mb-6">
+            <h1 className="text-xl font-semibold truncate">
+              {file.name}
+              {/* {file.extension} */}
+            </h1>
+            <p className="text-gray-400 text-sm mt-1">File Editor</p>
+          </div>
+
+          <div className="mt-auto flex flex-col gap-4">
+            <button
+              onClick={() => {
+                if (codeRef) handleSave(codeRef.current);
+              }}
+              disabled={isSaving}
+              className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors"
+            >
+              <Save size={18} />
+              {isSaving ? "Saving..." : "Save Changes"}
+            </button>
+            <button
+              onClick={() => setAskAIOpen(true)}
+              className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors"
+            >
+              <Image
+                src={ai}
+                alt="AI"
+                width={40}
+                height={40}
+                className="rounded"
+              />
+              Ask Gemini
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Right Panel - Editor */}
-      <div className="flex-1 overflow-hidden">
-        <CodeMirrorEditor
-          initialCode={fileContent}
-          fileId={fileId}
-          onContentChange={(code) => (codeRef.current = code)}
-          onSave={handleSave}
-          geminiCode={askCode}
-        />
-      </div>
+      {!isLeftMenuOpen && (
+        <div className="flex-1 overflow-hidden">
+          <CodeMirrorEditor
+            initialCode={fileContent}
+            fileId={fileId}
+            onContentChange={(code) => (codeRef.current = code)}
+            onSave={handleSave}
+            geminiCode={askCode}
+          />
+        </div>
+      )}
 
       {askAIOpen && (
         <Modal

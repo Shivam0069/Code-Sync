@@ -14,7 +14,7 @@ import Image from "next/image";
 import ai from "../../../assets/ai.jpg";
 import askGemini from "@/helper/Gemini";
 import Loader from "@/components/Loader";
-import { Menu } from "lucide-react";
+import { Menu, PanelLeft } from "lucide-react";
 import { X } from "lucide-react";
 
 const EditorPage = ({ params }) => {
@@ -31,6 +31,7 @@ const EditorPage = ({ params }) => {
   const [askCode, setAskCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isListOpen, setListOpen] = useState(false);
 
   // Voice chat state
   const [isInVoiceChat, setIsInVoiceChat] = useState(false);
@@ -541,11 +542,11 @@ const EditorPage = ({ params }) => {
   };
 
   return (
-    <div className="mainWrap relative w-full h-screen">
+    <div className=" relative flex  w-full h-screen">
       {loading && <Loader />}
 
       {isMenuOpen && (
-        <div className="absolute top-16 right-4 z-40 flex flex-col space-y-2">
+        <div className="absolute top-12 right-4 z-40 flex flex-col space-y-2">
           {/* Import Button - New */}
 
           <>
@@ -594,18 +595,69 @@ const EditorPage = ({ params }) => {
       )}
       {isMenuOpen ? (
         <X
-          className="text-white cursor-pointer absolute top-6 right-4 z-40"
+          className="text-white w-4 h-4 md:w-8 md:h-8 cursor-pointer absolute top-3 right-4 z-40"
           onClick={() => setIsMenuOpen(false)}
         />
       ) : (
         <Menu
-          className="text-white cursor-pointer absolute top-6 right-4 z-40"
+          className="text-white w-4 h-4 md:w-8 md:h-8 cursor-pointer absolute top-3 right-4 z-40"
           onClick={() => setIsMenuOpen(true)}
         />
       )}
 
-      <div className="aside">
-        <div className="asideInner">
+      {isListOpen ? (
+        <X
+          className="text-white cursor-pointer absolute top-3 left-4 z-40 md:hidden"
+          onClick={() => setListOpen(false)}
+        />
+      ) : (
+        <PanelLeft
+          className="text-white w-4 h-4 cursor-pointer absolute top-3 left-4 z-40 md:hidden"
+          onClick={() => setListOpen(true)}
+        />
+      )}
+      {isListOpen && (
+        <div className="w-screen md:hidden flex flex-col justify-between text-white px-8 py-10 ">
+          <div className="flex flex-col">
+            <h3>Connected Users</h3>
+            <div className="clientsList">
+              {clients.map((client) => (
+                <Client
+                  key={client.connection_id}
+                  username={client.username}
+                  MicButton={muteUnMuteHandler}
+                  isSelf={client.connection_id === socketRef.current?.id}
+                  isAudioMuted={isAudioMuted}
+                />
+              ))}
+            </div>
+          </div>
+          <div>
+            <button className="btn copyBtn " onClick={copyRoomId}>
+              Copy Room ID
+            </button>
+            <button className="btn leaveBtn" onClick={leaveRoom}>
+              Leave Room
+            </button>
+            <button
+              onClick={() => setAskAIOpen(true)}
+              className="w-full mt-2 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors"
+            >
+              <Image
+                src={ai}
+                alt="AI"
+                width={40}
+                height={40}
+                className="rounded"
+              />
+              Ask Gemini
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className={`aside hidden md:flex md:flex-col px-4 py-4  `}>
+        <div className="asideInner ">
           <h3>Connected Users</h3>
           <div className="clientsList">
             {clients.map((client) => (
@@ -631,20 +683,22 @@ const EditorPage = ({ params }) => {
           className="w-full mt-2 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors"
         >
           <Image src={ai} alt="AI" width={40} height={40} className="rounded" />
-          Ask Gemini
+          <span className="whitespace-nowrap"> Ask Gemini</span>
         </button>
       </div>
-      <div className="editorWrap">
-        <Editor
-          socketRef={socketRef}
-          roomId={roomId}
-          onCodeChange={(code) => {
-            codeRef.current = code;
-          }}
-          initialCode={initialCode}
-          geminiCode={askCode}
-        />
-      </div>
+      {!isListOpen && (
+        <div className="editorWrap !w-full ">
+          <Editor
+            socketRef={socketRef}
+            roomId={roomId}
+            onCodeChange={(code) => {
+              codeRef.current = code;
+            }}
+            initialCode={initialCode}
+            geminiCode={askCode}
+          />
+        </div>
+      )}
 
       {/* Import Modal */}
       {showImportModal && (
