@@ -36,7 +36,7 @@ app.get("/", (req, res) => {
   res.send("Hello World");
 });
 
-app.use("/users", userRoutes);
-app.use("/files", fileRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/files", fileRoutes);
 
 module.exports = app;
