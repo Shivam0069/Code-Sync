@@ -17,6 +17,11 @@ pipeline{
                 }
             }
         }
+        stage("B"){ // Added dummy stage
+            steps{
+                echo "========executing B========"
+            }
+        }
     }
     post{
         always{
