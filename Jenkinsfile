@@ -72,27 +72,31 @@ pipeline {
 
         stage('Deploy to EC2') {
             steps {
-                // Replace with your EC2 details and deployment commands
                 sshagent(['CodeSync-SSH']) {
                     sh '''
-                        ssh -o StrictHostKeyChecking=no ec2-user@13.221.210.124 << 'ENDSSH'
-                        cd /home/ec2-user/Code-Sync
-                        git pull origin main
-                        cd frontend && npm install && npm run build
-                        cd ../backend && npm install && pm2 restart all
-                        ENDSSH
+                    ssh -o StrictHostKeyChecking=no ec2-user@13.221.210.124 "
+                    cd /home/ec2-user/Code-Sync &&
+                    git pull origin main &&
+                    cd frontend &&
+                    npm install &&
+                    npm run build &&
+                    cd ../backend &&
+                    npm install &&
+                    pm2 restart all
+                "
                     '''
                 }
             }
             post {
-                success {
+                 success {
                     echo '✅ Deployment to EC2 completed successfully.'
                 }
                 failure {
-                    echo '❌ Deployment to EC2 failed. Possible reasons: SSH issues, git pull failure, or remote build errors.'
+                     echo '❌ Deployment to EC2 failed. Possible reasons: SSH issues, git pull failure, or remote build errors.'
                 }
             }
         }
+
     }
 
     post {
