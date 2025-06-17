@@ -70,32 +70,49 @@ pipeline {
             }
         }
 
-        stage('Deploy to EC2') {
-            steps {
-                sshagent(['CodeSync-SSH']) {
-                    sh '''
-                    ssh -o StrictHostKeyChecking=no ec2-user@13.221.210.124 "
-                    cd /home/ec2-user/Code-Sync &&
-                    git pull origin main &&
-                    cd frontend &&
-                    npm install &&
-                    npm run build &&
-                    cd ../backend &&
-                    npm install &&
-                    pm2 restart all
-                "
-                    '''
-                }
-            }
-            post {
-                 success {
-                    echo '✅ Deployment to EC2 completed successfully.'
-                }
-                failure {
-                     echo '❌ Deployment to EC2 failed. Possible reasons: SSH issues, git pull failure, or remote build errors.'
-                }
-            }
+       stage('Deploy to EC2') {
+    steps {
+        sshagent(['CodeSync-SSH']) {
+            sh '''
+            ssh -o StrictHostKeyChecking=no ec2-user@13.221.210.124 '
+                set -e
+
+                echo "📦 Pulling latest code..."
+                cd /home/ec2-user/Code-Sync
+                git pull origin main
+
+                echo "🔧 Installing frontend dependencies..."
+                cd frontend
+                npm install
+
+                echo "🏗️ Building frontend..."
+                npm run build
+
+                echo "🚀 Restarting frontend with PM2..."
+                pm2 delete frontend || true
+                pm2 start "npm start" --name frontend
+
+                echo "🔧 Installing backend dependencies..."
+                cd ../backend
+                npm install
+
+                echo "🚀 Restarting backend with PM2..."
+                pm2 delete backend || true
+                pm2 start server.js --name backend
+            '
+            '''
         }
+    }
+    post {
+        success {
+            echo '✅ Deployment to EC2 completed successfully.'
+        }
+        failure {
+            echo '❌ Deployment to EC2 failed. Possible reasons: SSH issues, git pull failure, or remote build errors.'
+        }
+    }
+}
+
 
     }
 

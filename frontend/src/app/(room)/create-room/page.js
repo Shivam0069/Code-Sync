@@ -93,7 +93,7 @@ const Home = () => {
             target="_blank"
             rel="noopener noreferrer"
           >
-            Shivam
+            Shivam Singh
           </a>
         </h4>
       </footer>
